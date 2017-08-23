@@ -6,6 +6,7 @@ import (
 	"errors"
 	"golang.org/x/crypto/bcrypt"
 	"time"
+	"log"
 )
 
 type User struct {
@@ -20,7 +21,7 @@ type User struct {
 type UserModel struct{}
 
 func (m UserModel) Signin(form forms.SigninForm) (user User, err error) {
-	err = db.SqlDB.QueryRow("SELECT id, email, password, name, updated_at, created_at FROM public.user WHERE email=LOWER(?) LIMIT 1", form.Email).Scan(user)
+	err = db.SqlDB.QueryRow("SELECT id, email, password, name, updated_at, created_at FROM user WHERE email=LOWER(?) LIMIT 1", form.Email).Scan(user)
 
 	if err != nil {
 		return user, err
@@ -40,7 +41,7 @@ func (m UserModel) Signin(form forms.SigninForm) (user User, err error) {
 
 func (m UserModel) Signup(form forms.SignupForm) (user User, err error) {
 	var checkUser = 0
-	err = db.SqlDB.QueryRow("SELECT count(id) FROM public.user WHERE email=LOWER(?) LIMIT 1", form.Email).Scan(checkUser)
+	err = db.SqlDB.QueryRow("SELECT count(id) FROM user WHERE email=LOWER(?) LIMIT 1", form.Email).Scan(&checkUser)
 
 	if err != nil {
 		return user, err
@@ -55,10 +56,11 @@ func (m UserModel) Signup(form forms.SignupForm) (user User, err error) {
 	if err != nil {
 		panic(err)
 	}
-	res, err := db.SqlDB.Exec("INSERT INTO public.user(email, password, name, updated_at, created_at) VALUES(?, ?, ?, ?, ?) RETURNING id", form.Email, string(hashedPassword), form.Name, time.Now().Unix(), time.Now().Unix())
+	res, err := db.SqlDB.Exec("INSERT INTO user(email, password, name, updated_at, created_at) VALUES(?, ?, ?, ?, ?)", form.Email, string(hashedPassword), form.Name, time.Now(), time.Now())
 
 	if res != nil && err == nil {
-		err = db.SqlDB.QueryRow("SELECT id, email, name, updated_at, created_at FROM public.user WHERE email=LOWER(?) LIMIT 1", form.Email).Scan(user)
+		err = db.SqlDB.QueryRow("SELECT * FROM user WHERE email=LOWER(?) LIMIT 1", form.Email).Scan(&user)
+		log.Println(err)
 		if err == nil {
 			return user, nil
 		}
@@ -68,6 +70,6 @@ func (m UserModel) Signup(form forms.SignupForm) (user User, err error) {
 }
 
 func (m UserModel) One(userId int64) (user User, err error) {
-	err = db.SqlDB.QueryRow("SELECT id, email, name FROM public.user WHERE id=?", userId).Scan(user)
+	err = db.SqlDB.QueryRow("SELECT id, email, name FROM user WHERE id=?", userId).Scan(user)
 	return user, err
 }

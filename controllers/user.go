@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"../models"
 	"../forms"
+	"log"
 )
 
 type UserController struct{}
@@ -17,20 +18,20 @@ func (ctrl UserController) Hi(c *gin.Context) {
 	c.JSON(200, gin.H{"message": "hi,jason."})
 }
 
-func getUserID(c *gin.Context) int64 {
+func getUserId(c *gin.Context) int64 {
 	session := sessions.Default(c)
-	userID := session.Get("user_id")
-	if userID != nil {
-		return models.ConvertToInt64(userID)
+	userId := session.Get("user_id")
+	if userId != nil {
+		return models.ConvertToInt64(userId)
 	}
 	return 0
 }
 
 func getSessionUserInfo(c *gin.Context) (userSessionInfo models.UserSessionInfo) {
 	session := sessions.Default(c)
-	userID := session.Get("user_id")
-	if userID != nil {
-		userSessionInfo.ID = models.ConvertToInt64(userID)
+	userId := session.Get("user_id")
+	if userId != nil {
+		userSessionInfo.ID = models.ConvertToInt64(userId)
 		userSessionInfo.Name = session.Get("user_name").(string)
 		userSessionInfo.Email = session.Get("user_email").(string)
 	}
@@ -39,7 +40,6 @@ func getSessionUserInfo(c *gin.Context) (userSessionInfo models.UserSessionInfo)
 
 func (ctrl UserController) Signin(c *gin.Context) {
 	var signinForm forms.SigninForm
-
 	if c.BindJSON(&signinForm) != nil {
 		c.JSON(406, gin.H{"message": "Invalid form", "form": signinForm})
 		c.Abort()
@@ -57,6 +57,35 @@ func (ctrl UserController) Signin(c *gin.Context) {
 		c.JSON(200, gin.H{"message": "User signed in", "user": user})
 	} else {
 		c.JSON(406, gin.H{"message": "Invalid signin details", "error": err.Error()})
+	}
+}
+
+func (ctrl UserController) Signup(c *gin.Context) {
+	var signupForm forms.SignupForm
+	log.Println(c.Request)
+	if c.BindJSON(&signupForm) != nil {
+		c.JSON(406, gin.H{"message": "Invalid form", "form": signupForm})
+		c.Abort()
+		return
+	}
+
+	user, err := userModel.Signup(signupForm)
+
+	if err != nil {
+		c.JSON(406, gin.H{"message": err.Error()})
+		c.Abort()
+		return
+	}
+
+	if user.Id > 0 {
+		session := sessions.Default(c)
+		session.Set("user_id", user.Id)
+		session.Set("user_email", user.Email)
+		session.Set("user_name", user.Name)
+		session.Save()
+		c.JSON(200, gin.H{"message": "Success signup", "user": user})
+	} else {
+		c.JSON(406, gin.H{"message": "Could not signup this user", "error": err.Error()})
 	}
 
 }

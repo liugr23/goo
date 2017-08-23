@@ -47,6 +47,7 @@ func main() {
 	{
 		user := new(controllers.UserController)
 		v1.GET("/user/hi", user.Hi)
+		v1.POST("/user/register", user.Signup)
 	}
 
 	r.Run(":9001")
